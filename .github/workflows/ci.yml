@@ -1,3 +1,4 @@
+
 name: Customer Churn CI/CD
 
 on:
@@ -5,6 +6,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-and-test:
@@ -30,6 +35,17 @@ jobs:
       - name: Run Automated Tests
         run: pytest test_app.py -v
 
-      - name: Build Application
+      - name: Build Docker Image
         run: |
-          echo "Customer Churn Application Build Successful"
+          docker build -t customer-churn-api:latest .
+
+      - name: Login to GHCR
+        if: github.event_name == 'push'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Publish Docker Image
+        if: github.event_name == 'push'
+        run: |
+          docker tag customer-churn-api:latest ghcr.io/${{ github.repository_owner }}/customer-churn-api:latest
+          docker push ghcr.io/${{ github.repository_owner }}/customer-churn-api:latest
